@@ -4,3 +4,7 @@ python-dotenv
 httpx
 pytest
 groq
+passlib
+python-jose
+psycopg[binary]
+google-auth
