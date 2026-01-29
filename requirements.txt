@@ -1,6 +1,11 @@
 fastapi
 uvicorn
 python-dotenv
-httpx
+requests
 pytest
 groq
+passlib
+python-jose
+psycopg[binary]
+google-auth
+bcrypt
