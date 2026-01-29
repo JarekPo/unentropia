@@ -1,29 +1,30 @@
 import os
 
+from auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
+from auth.tokens import create_access_token, create_refresh_token
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, HTTPException, Response
+from fastapi.responses import RedirectResponse
 from jose import jwt
-
-from app.auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
-from app.auth.tokens import create_access_token, create_refresh_token
-from app.user_management.user import create_user, get_user_by_google_sub
+from user_management.user import create_user, get_user_by_google_sub, get_user_by_id
 
 JWT_ALG = os.getenv("JWT_ALGORITHM")
 JWT_SECRET = os.getenv("JWT_SECRET")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
 load_dotenv()
 
 router = APIRouter()
 
 
-@router.get("/auth/google/url")
+@router.get("/url")
 def auth_url():
     return {"url": google_auth_url()}
 
 
-@router.get("/auth/google/callback")
-async def google_callback(code: str, response: Response):
-    google_tokens = await exchange_code_for_tokens(code)
-
+@router.get("/callback")
+def google_callback(code: str, response: Response):
+    google_tokens = exchange_code_for_tokens(code)
     idinfo = verify_and_extract_idinfo(google_tokens["id_token"])
 
     sub = idinfo["sub"]
@@ -32,15 +33,23 @@ async def google_callback(code: str, response: Response):
     avatar = idinfo.get("picture")
 
     user = get_user_by_google_sub(sub)
-    user_id = user[0] if user else create_user(sub, email, name, avatar)
+    if user:
+        user_id = user["user_id"]
+    else:
+        try:
+            user_id = create_user(sub, email, name, avatar)
+        except Exception as e:
+            raise HTTPException(500, f"User creation failed: {str(e)}")
+
+    user_id = user["user_id"] if user else create_user(sub, email, name, avatar)
 
     access = create_access_token(user_id)
     refresh = create_refresh_token(user_id)
 
+    response = RedirectResponse(url=FRONTEND_URL, status_code=303)
     response.set_cookie("access", access, httponly=True, secure=True, samesite="None")
     response.set_cookie("refresh", refresh, httponly=True, secure=True, samesite="None")
-
-    return {"ok": True}
+    return response
 
 
 @router.get("/me")
@@ -49,4 +58,24 @@ def me(access: str = Cookie(None)):
         raise HTTPException(401)
 
     payload = jwt.decode(access, JWT_SECRET, algorithms=[JWT_ALG])
-    return {"user_id": payload["sub"]}
+    user_id = payload["sub"]
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return {
+        "id": user["user_id"],
+        "email": user["email"],
+        "name": user["username"],
+        "avatar": user.get("avatar"),
+    }
+
+
+@router.post("/logout")
+def logout():
+    response = Response(content='{"ok": true}', media_type="application/json")
+    response.delete_cookie("access")
+    response.delete_cookie("refresh")
+    return response

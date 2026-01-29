@@ -2,18 +2,16 @@ import datetime
 import os
 import secrets
 
-import psycopg
+from database.connection import db_conn
 from jose import jwt
 from passlib.context import CryptContext
 
 JWT_ALG = os.getenv("JWT_ALGORITHM")
 JWT_EXPIRE_MIN = int(os.getenv("ACCESS_TOKEN_EXPIRES_MIN", 15))
 JWT_SECRET = os.getenv("JWT_SECRET")
-DATABASE_URL = os.getenv("DATABASE_URL")
 
-db_conn = psycopg.connect(DATABASE_URL)
 
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 
 def create_access_token(user_id: int):
@@ -24,11 +22,12 @@ def create_access_token(user_id: int):
 def create_refresh_token(user_id: int):
     raw = secrets.token_urlsafe(64)
     hashed = pwd.hash(raw)
+    token_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
 
     cur = db_conn.cursor()
     cur.execute(
-        "INSERT INTO refresh_tokens (user_id, token_hash) VALUES (%(user_id)s, %(token_hash)s)",
-        {"user_id": user_id, "token_hash": hashed},
+        "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%(user_id)s, %(token_hash)s, %(expires_at)s)",
+        {"user_id": user_id, "token_hash": hashed, "expires_at": token_exp},
     )
     db_conn.commit()
 

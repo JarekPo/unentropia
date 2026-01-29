@@ -1,9 +1,9 @@
 import os
 
-import httpx
+import requests
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
 load_dotenv()
@@ -26,20 +26,20 @@ def google_auth_url():
     return f"{base}?{params}"
 
 
-async def exchange_code_for_tokens(code: str):
+def exchange_code_for_tokens(code: str):
     token_url = "https://oauth2.googleapis.com/token"
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            token_url,
-            data={
-                "code": code,
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "redirect_uri": GOOGLE_REDIRECT_URI,
-                "grant_type": "authorization_code",
-            },
-        )
+    resp = requests.post(
+        token_url,
+        data={
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "grant_type": "authorization_code",
+        },
+        timeout=10,
+    )
 
     data = resp.json()
 
@@ -51,6 +51,10 @@ async def exchange_code_for_tokens(code: str):
 
 def verify_and_extract_idinfo(raw_id_token: str):
     try:
-        return id_token.verify_oauth2_token(raw_id_token, requests.Request(), GOOGLE_CLIENT_ID)
+        return id_token.verify_oauth2_token(
+            raw_id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
     except Exception:
         raise HTTPException(401, "Invalid Google id_token")
