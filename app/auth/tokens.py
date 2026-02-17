@@ -9,6 +9,7 @@ from passlib.context import CryptContext
 JWT_ALG = os.getenv("JWT_ALGORITHM")
 JWT_EXPIRE_MIN = int(os.getenv("ACCESS_TOKEN_EXPIRES_MIN", 15))
 JWT_SECRET = os.getenv("JWT_SECRET")
+REFRESH_TOKEN_EXPIRES_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRES_DAYS", 30))
 
 
 pwd = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
@@ -22,7 +23,7 @@ def create_access_token(user_id: int):
 def create_refresh_token(user_id: int):
     raw = secrets.token_urlsafe(64)
     hashed = pwd.hash(raw)
-    token_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
+    token_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=REFRESH_TOKEN_EXPIRES_DAYS)
 
     cur = db_conn.cursor()
     cur.execute(
