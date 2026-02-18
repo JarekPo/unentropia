@@ -2,7 +2,7 @@ import datetime
 import os
 import secrets
 
-from database.connection import db_conn
+from database.connection import pool
 from jose import jwt
 from passlib.context import CryptContext
 
@@ -25,24 +25,28 @@ def create_refresh_token(user_id: int):
     hashed = pwd.hash(raw)
     token_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=REFRESH_TOKEN_EXPIRES_DAYS)
 
-    cur = db_conn.cursor()
-    cur.execute(
-        "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%(user_id)s, %(token_hash)s, %(expires_at)s)",
-        {"user_id": user_id, "token_hash": hashed, "expires_at": token_exp},
-    )
-    db_conn.commit()
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%(user_id)s, %(token_hash)s, %(expires_at)s)",
+                {"user_id": user_id, "token_hash": hashed, "expires_at": token_exp},
+            )
+        conn.commit()
 
     return raw
 
 
 def verify_refresh(user_id: int, raw_refresh: str):
-    cur = db_conn.cursor()
-    cur.execute(
-        "SELECT token_hash FROM refresh_tokens WHERE user_id=%(user_id)s ORDER BY id DESC LIMIT 1", {"user_id": user_id}
-    )
-    row = cur.fetchone()
-    if not row:
-        return False
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT token_hash FROM refresh_tokens WHERE user_id=%(user_id)s ORDER BY id DESC LIMIT 1",
+                {"user_id": user_id},
+            )
+            row = cur.fetchone()
+            if not row:
+                return False
+        conn.commit()
 
     stored_hash = row["token_hash"]
     return pwd.verify(raw_refresh, stored_hash)
