@@ -1,4 +1,3 @@
-import uvicorn
 from api.v1.endpoints.chat import router as chat_router
 from api.v1.endpoints.health import router as health_router
 from auth.routes import router as auth_router
@@ -34,7 +33,3 @@ async def expired_token_handler(request: Request, exc: exceptions.ExpiredSignatu
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={"detail": "Token has expired. Please log in again."},
     )
-
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
