@@ -1,11 +1,12 @@
 import os
 
-from auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
-from auth.tokens import create_access_token, create_refresh_token
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from jose import jwt
+
+from auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
+from auth.tokens import create_access_token, create_refresh_token
 from user_management.user import create_user, get_user_by_google_sub, get_user_by_id
 
 JWT_ALG = os.getenv("JWT_ALGORITHM")
@@ -40,8 +41,6 @@ def google_callback(code: str, response: Response):
             user_id = create_user(sub, email, name, avatar)
         except Exception as e:
             raise HTTPException(500, f"User creation failed: {str(e)}")
-
-    user_id = user["user_id"] if user else create_user(sub, email, name, avatar)
 
     access = create_access_token(user_id)
     refresh = create_refresh_token(user_id)
