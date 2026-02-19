@@ -14,7 +14,7 @@ app.include_router(health_router, prefix="/api/v1/health", tags=["health"])
 app.include_router(chat_router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(auth_router, prefix="/auth/google", tags=["auth"])
 
-origins = ["http://localhost:3000"]
+origins = ["https://unentropia-ui.vercel.app", "http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
