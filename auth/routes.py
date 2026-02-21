@@ -4,9 +4,11 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from jose import jwt
+from psycopg.rows import dict_row
 
 from auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
-from auth.tokens import create_access_token, create_refresh_token
+from auth.tokens import create_access_token, create_refresh_token, pwd
+from database.connection import pool
 from user_management.user import create_user, get_user_by_google_sub, get_user_by_id
 
 JWT_ALG = os.getenv("JWT_ALGORITHM")
@@ -70,6 +72,40 @@ def me(access: str = Cookie(None)):
         "name": user["username"],
         "avatar": user.get("avatar"),
     }
+
+
+@router.post("/refresh")
+def refresh(response: Response, refresh: str = Cookie(None)):
+    if not refresh:
+        raise HTTPException(401)
+
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute("""
+                SELECT user_id, token_hash
+                FROM refresh_tokens
+                WHERE expires_at > NOW()
+            """)
+            rows = cur.fetchall()
+
+    for row in rows:
+        if pwd.verify(refresh, row["token_hash"]):
+            user_id = row["user_id"]
+            break
+    else:
+        raise HTTPException(401)
+
+    new_access = create_access_token(user_id)
+
+    response.set_cookie(
+        "access",
+        new_access,
+        httponly=True,
+        secure=True,
+        samesite="None",
+    )
+
+    return {"ok": True}
 
 
 @router.post("/logout")
