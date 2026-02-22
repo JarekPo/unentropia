@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Cookie, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from jose import ExpiredSignatureError, JWTError, jwt
 from psycopg.rows import dict_row
@@ -90,6 +90,7 @@ def refresh(response: Response, refresh: str = Cookie(None)):
                 SELECT user_id, token_hash
                 FROM refresh_tokens
                 WHERE expires_at > NOW()
+                AND revoked = FALSE
             """)
             rows = cur.fetchall()
 
@@ -114,8 +115,19 @@ def refresh(response: Response, refresh: str = Cookie(None)):
 
 
 @router.post("/logout")
-def logout():
+def logout(user: str = Depends(me)):
     response = Response(content='{"ok": true}', media_type="application/json")
     response.delete_cookie("access")
     response.delete_cookie("refresh")
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE refresh_tokens
+                SET revoked = TRUE
+                WHERE user_id = %(user_id)s
+            """,
+                {"user_id": user["id"]},
+            )
+            conn.commit()
     return response

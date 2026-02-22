@@ -25,12 +25,14 @@ def create_refresh_token(user_id: int):
     raw = secrets.token_urlsafe(64)
     hashed = pwd.hash(raw)
     token_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=REFRESH_TOKEN_EXPIRES_DAYS)
+    params = {"user_id": user_id, "token_hash": hashed, "expires_at": token_exp}
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%(user_id)s, %(token_hash)s, %(expires_at)s)",
-                {"user_id": user_id, "token_hash": hashed, "expires_at": token_exp},
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) "
+                "VALUES (%(user_id)s, %(token_hash)s, %(expires_at)s)",
+                params,
             )
         conn.commit()
 
