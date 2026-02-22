@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, HTTPException, Response
 from fastapi.responses import RedirectResponse
-from jose import jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from psycopg.rows import dict_row
 
 from auth.google_services import exchange_code_for_tokens, google_auth_url, verify_and_extract_idinfo
@@ -58,9 +58,14 @@ def me(access: str = Cookie(None)):
     if not access:
         raise HTTPException(401)
 
-    payload = jwt.decode(access, JWT_SECRET, algorithms=[JWT_ALG])
-    user_id = payload["sub"]
+    try:
+        payload = jwt.decode(access, JWT_SECRET, algorithms=[JWT_ALG])
+    except ExpiredSignatureError:
+        raise HTTPException(401, "Access token expired")
+    except JWTError:
+        raise HTTPException(401, "Invalid token")
 
+    user_id = payload["sub"]
     user = get_user_by_id(user_id)
 
     if not user:

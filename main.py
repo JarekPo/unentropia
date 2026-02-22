@@ -1,7 +1,5 @@
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from jose import exceptions
 
 from api.v1.endpoints.chat import router as chat_router
 from api.v1.endpoints.health import router as health_router
@@ -23,14 +21,3 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-
-@app.exception_handler(exceptions.ExpiredSignatureError)
-async def expired_token_handler(request: Request, exc: exceptions.ExpiredSignatureError):
-    print("Token expired:", exc)
-    print("Request URL:", request.url)
-    print("Request:", request)
-    return JSONResponse(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        content={"detail": "Token has expired. Please log in again."},
-    )
