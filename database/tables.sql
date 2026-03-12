@@ -15,3 +15,12 @@ CREATE TABLE refresh_tokens (
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     revoked BOOLEAN DEFAULT FALSE
 );
+
+CREATE TABLE chat_messages (
+    message_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id VARCHAR NOT NULL,
+    user_id INT REFERENCES users(user_id),
+    role VARCHAR NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
