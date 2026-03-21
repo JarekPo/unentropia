@@ -22,3 +22,6 @@ https://github.com/JarekPo/unentropia-ui
 
 ## Live Demo
 https://unentropia-ui.vercel.app
+
+## Screenshot
+![desk](https://github.com/user-attachments/assets/226fa6a6-9abb-4bb7-83ca-eb84452b0e29)
