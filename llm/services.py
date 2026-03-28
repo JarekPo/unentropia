@@ -13,9 +13,8 @@ def get_or_create_client(session_id: str) -> GroqClient:
 def handle_user_message(session_id: str, user_message: str, user_id: int | str | None = None) -> str:
     client = get_or_create_client(session_id)
     response = client.get_response(user_message)
-    if user_id:
-        store_message(session_id, user_id, user_message, role="user")
-        store_message(session_id, user_id, response, role="assistant")
+    store_message(session_id, user_id, user_message, role="user")
+    store_message(session_id, user_id, response, role="assistant")
     return response
 
 
